@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint
+        run: ruff check .
+      - name: Run tests
+        # Fully offline — no ANTHROPIC_API_KEY needed. The LLM and QAEvalChain sit behind
+        # flags conftest forces off, so CI is deterministic.
+        env:
+          USE_LLM: "0"
+        run: python -m pytest -q
+      - name: Verify test count matches the docs
+        run: |
+          count=$(python -m pytest --collect-only -q 2>/dev/null | grep -c '::')
+          echo "collected $count tests"
+          [ "$count" -eq 28 ] || { echo "Test count drifted from 28 (docs cite 28)."; exit 1; }

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+logs/
+*.zip
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+screenshots/
+# Third-party copyrighted BI papers — NOT redistributed in this public repo. Drop your
+# own PDFs into data/sources/ to enable the qualitative doc-RAG (see data/sources/README.md).
+data/sources/*.pdf
+# Cached vector index (rebuilt from sources at startup)
+.cache/

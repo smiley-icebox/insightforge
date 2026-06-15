@@ -1,0 +1,29 @@
+# InsightForge — pinned runtime + dev dependencies. Python 3.12+.
+# Install: python -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Runs fully offline for tests (USE_LLM=0); the LLM/eval paths need ANTHROPIC_API_KEY.
+
+# --- Data + analytics --------------------------------------------------------
+pandas==2.3.3
+numpy==2.4.6
+
+# --- RAG (quantitative stats retriever + qualitative doc retriever) ----------
+scikit-learn==1.9.0          # TF-IDF vectors for the document retriever (no torch)
+faiss-cpu==1.14.3            # vector index over PDF chunks
+pypdf==6.1.1                 # extract text from the BI source PDFs
+
+# --- LLM + chains ------------------------------------------------------------
+langchain==1.3.9
+langchain-core==1.4.7
+langchain-anthropic==1.4.6
+langchain-classic==1.0.8     # QAEvalChain (langchain 1.x moved legacy eval here)
+anthropic==0.109.1
+
+# --- Visualization + UI ------------------------------------------------------
+matplotlib==3.10.7
+streamlit==1.58.0
+python-dotenv==1.2.2
+pydantic==2.13.4
+
+# --- Tests + lint ------------------------------------------------------------
+pytest==9.1.0
+ruff==0.15.17
