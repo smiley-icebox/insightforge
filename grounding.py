@@ -19,11 +19,16 @@ Three sharp edges, all deliberate:
 
 import re
 
-# A full numeric run (digits, commas, internal dots). Multi-dot runs (DOIs, versions,
-# section numbers) parse to NaN below and are dropped — they aren't quantities.
-_NUM_RE = re.compile(r"-?\d[\d,.]*\d|-?\d")
+# A full numeric run. Notes on the sharp edges:
+#  - (?<!\d) so a '-' is a sign only when NOT preceded by a digit — "2020-03" yields
+#    2020 and 3, not a spurious -3 (dates), while "-82.6%" keeps its sign.
+#  - the \.\d+ alternative parses a leading-dot decimal (".5" -> 0.5, not 5).
+#  - a multi-dot run ("2020.03.24010") matches whole and fails float() below, so it's
+#    dropped rather than split into a spurious figure.
+_NUM = r"(?<!\d)-?(?:\d[\d,.]*\d|\.\d+|\d)"
+_NUM_RE = re.compile(_NUM)
 # A number immediately followed by a percent/multiplier marker -> always a claim.
-_CLAIM_SUFFIX_RE = re.compile(r"(-?\d[\d,.]*\d|-?\d)\s*(%|percent|x\b|×)", re.IGNORECASE)
+_CLAIM_SUFFIX_RE = re.compile(rf"({_NUM})\s*(%|percent|x\b|×)", re.IGNORECASE)
 
 
 def numbers(text: str) -> list[float]:
@@ -48,10 +53,15 @@ def _claim_values(text: str) -> set[float]:
 
 
 def is_numerically_grounded(answer: str, allowed_text: str,
-                            tol_rel: float = 0.001, tol_abs: float = 0.5):
+                            tol_rel: float = 0.001, tol_abs: float = 0.01):
     """Return (ok, offending_number). A number is grounded if it's within tol of a figure
     in `allowed_text`. Bare small integers (<10) are structural and skipped — UNLESS they
-    carry a % / x suffix, which makes them a claim that must be grounded."""
+    carry a % / x suffix, which makes them a claim that must be grounded.
+
+    tol_abs is 0.01 (figures are rendered to 2dp): tight enough that a fabricated value
+    can't match a DIFFERENT real figure in a dense cluster — e.g. satisfaction means span
+    only ~0.16 on the 1-5 scale, so a ±0.5 floor would have let any of them match any
+    other. tol_rel still absorbs light rounding of large figures."""
     allowed = numbers(allowed_text)
     claims = _claim_values(answer)
     for n in numbers(answer):

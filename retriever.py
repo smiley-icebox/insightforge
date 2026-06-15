@@ -76,7 +76,10 @@ def _pdf_chunks() -> list[dict]:
             for para in re.split(r"\n\s*\n", text):
                 para = re.sub(r"\s+", " ", para).strip()
                 if len(para) >= 120:                       # skip headers/page-furniture
-                    chunks.append({"text": para[:1200], "source": fname[:-4], "page": pageno})
+                    # Trim at a word boundary so a mid-number cut can't mint a phantom
+                    # figure (e.g. "1,383,220" -> "1,383,2") into the grounding pool.
+                    body = para[:1200].rsplit(" ", 1)[0] if len(para) > 1200 else para
+                    chunks.append({"text": body, "source": fname[:-4], "page": pageno})
     return chunks
 
 

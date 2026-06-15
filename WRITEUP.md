@@ -30,8 +30,10 @@ demographics, and statistical measures (mean, median, std, quartiles). A **custo
 retriever** (`retriever.py`) maps a question to the relevant computed stat blocks, and the
 LLM is asked only to **phrase** them using the exact figures. A post-generation
 **numeric-grounding gate** (`grounding.py`) then verifies that every significant number in
-the answer traces to a retrieved statistic (within a small rounding tolerance); if one
+the answer *traces to* a retrieved statistic (within a small rounding tolerance); if one
 doesn't, the deterministic rendering ships instead. The model is fenced out of arithmetic.
+(The gate checks figure provenance, not figure-to-label binding — that's the LLM's job,
+constrained by the exact-quote prompt.)
 
 To keep rich comparative answers *grounded* rather than falling back, the stats engine
 **precomputes the derived figures** users ask for — each product/region's share of total
@@ -68,20 +70,21 @@ answer ship, grounded.
 
 - All required capabilities work end-to-end. On the versioned eval set: **retrieval
   hit-rate@k 1.0, numeric grounding 1.0**, and LangChain **QAEvalChain correctness 1.0**.
-- **30 automated tests pass with no API call** — analytics figures, the grounding gate,
+- **37 automated tests pass with no API call** — analytics figures, the grounding gate,
   both retrievers, the RAG path (incl. a stubbed-LLM test proving fabricated numbers fall
   back), memory, eval, and the charts are all verifiable offline.
-- The assistant answers comparative questions with exact, grounded figures (shares, gaps,
-  the insight that the top-selling product isn't the highest-satisfaction one) and cites BI
-  sources for recommendations — and **refuses** rather than guessing when the data can't
-  answer.
+- The assistant answers comparative questions with exact, grounded figures (shares, gaps),
+  cites BI sources for recommendations, answers open "what should we focus on?" questions
+  from the deterministic key insights, and **refuses** rather than guessing when the data
+  can't answer. (It deliberately stays quiet on differences that are statistical noise —
+  e.g. the ~0.16 satisfaction spread is below the margin to call an "opportunity.")
 
 ## Engineering decisions worth calling out
 
 | Decision | Why |
 |----------|-----|
 | LLM never computes a number | A BI tool's core failure mode is a confident wrong figure; pandas owns the math. |
-| Numeric-grounding gate on the final answer | Makes "no fabricated numbers" an enforced invariant, not a hope. |
+| Numeric-grounding gate on the final answer | Every figure must trace to a computed statistic (or cited source) — a fabricated value is rejected. (It checks figure *provenance*; correct figure-to-label binding is the LLM's job, fenced by the exact-quote prompt.) |
 | Precompute shares + gaps | Lets comparative answers stay grounded instead of falling back. |
 | Citations attached in code | The model can't invent a source; provenance is verifiable. |
 | Gold eval answers computed from data | The references can't drift from the dataset. |

@@ -13,10 +13,19 @@ AND out of inventing sources (citations are attached in code from the retrieved 
 With USE_LLM off, the deterministic path runs — so the whole app works with no API key.
 """
 
+import re
+
 import config
 import grounding
+import insights
 import llm
 from retriever import DocRetriever, StatsRetriever
+
+# Open/strategic questions ("what should we focus on?") often match no single stat block;
+# they're answered from the deterministic key insights + cited sources, not refused.
+_STRATEGIC_RE = re.compile(
+    r"\b(focus|recommend|improve|should|suggest|priorit|opportunit|strateg|advice|"
+    r"advise|insight|take ?away|do about|grow|key)\w*", re.IGNORECASE)
 
 _stats_retriever = None
 _doc_retriever = None
@@ -59,9 +68,12 @@ def _deterministic_answer(stat_docs, source_docs) -> str:
     parts = [d.page_content for d in stat_docs]
     answer = "\n\n".join(parts).strip() or config.NO_GROUNDING_MESSAGE
     if source_docs:
-        s = source_docs[0]
-        answer += (f"\n\nRelated guidance (from {s.metadata.get('source')}, "
-                   f"p.{s.metadata.get('page')}): {s.page_content[:280]}…")
+        # Quote the source body trimmed at a WORD boundary (a mid-number cut would mint a
+        # phantom figure). The citation (source + page) rides in the result's `citations`
+        # field — NOT inline — so the answer prose carries no bare page number for the
+        # numeric gate to trip on.
+        snippet = source_docs[0].page_content[:280].rsplit(" ", 1)[0]
+        answer += f"\n\nRelated guidance: {snippet}…"
         answer += "\n\n" + config.RECOMMENDATION_DISCLAIMER
     return answer
 
@@ -112,12 +124,28 @@ def _llm_answer(query, stat_docs, source_docs, mem_context) -> tuple[str, bool]:
     return text, False
 
 
+def _strategic_doc():
+    """The deterministic key insights as a single grounding 'stat' doc — so an open
+    strategy question is answered from real, computed figures instead of refused."""
+    from langchain_core.documents import Document
+    body = "Key insights from the data:\n" + "\n".join(insights.key_insights())
+    return Document(page_content=body,
+                    metadata={"id": "insights", "title": "Key insights", "kind": "stat"})
+
+
 def answer(query: str, memory=None) -> dict:
     """Answer a BI question. Returns answer + code-attached citations + provenance."""
     stat_docs, source_docs = retrieve(query)
+    # An open/strategic question may match no single stat block. Rather than refuse (and
+    # discard the doc-RAG hits), answer it from the deterministic key insights + cited
+    # sources. Only a genuinely off-topic question (no stats, no sources, not strategic)
+    # gets the refusal.
     if not stat_docs:
-        return {"answer": config.NO_GROUNDING_MESSAGE, "citations": [],
-                "stats_used": [], "sources_used": [], "grounded": False, "used_llm": False}
+        if source_docs or _STRATEGIC_RE.search(query or ""):
+            stat_docs = [_strategic_doc()]
+        else:
+            return {"answer": config.NO_GROUNDING_MESSAGE, "citations": [],
+                    "stats_used": [], "sources_used": [], "grounded": False, "used_llm": False}
     mem_context = memory.context() if memory is not None else ""
     if config.USE_LLM:
         text, fell_back = _llm_answer(query, stat_docs, source_docs, mem_context)

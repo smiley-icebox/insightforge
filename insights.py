@@ -30,8 +30,14 @@ def key_insights() -> list[str]:
         f"**Overall:** {ov['total_sales']:,} total sales across {ov['rows']:,} records "
         f"(mean {ov['mean_sales']}, median {ov['median_sales']}).",
     ]
-    # The interesting tension: best-seller isn't always best-rated.
-    if best_sat["Product"] != top_p["Product"]:
+    # The "best-seller isn't best-rated" angle is only worth surfacing if the satisfaction
+    # gap is MEANINGFUL — on this data the spread is ~0.16 on a 1-5 scale (statistical
+    # noise), so presenting it as an opportunity would be dressing noise as a finding. Gate
+    # on a real margin; stay quiet otherwise.
+    SATISFACTION_MARGIN = 0.25
+    top_p_sat = prod[prod["Product"] == top_p["Product"]]["mean_satisfaction"].iloc[0]
+    if (best_sat["Product"] != top_p["Product"]
+            and best_sat["mean_satisfaction"] - top_p_sat >= SATISFACTION_MARGIN):
         out.append(
             f"**Worth a look:** {best_sat['Product']} has the highest satisfaction "
             f"({best_sat['mean_satisfaction']}) but isn't the top seller — a possible "

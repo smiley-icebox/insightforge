@@ -85,7 +85,7 @@ computed statistics rendered directly, grounded by construction.
 | QAEvalChain evaluation | `evaluation.py` |
 | Visualizations (4 required) | `viz.py` |
 | Streamlit UI | `app.py` |
-| **Exceeds** | numeric-grounding gate · second cited RAG over BI literature · versioned computed-reference eval set · lint+CI · 30 offline tests |
+| **Exceeds** | numeric-grounding gate · second cited RAG over BI literature · versioned computed-reference eval set · lint+CI · 37 offline tests |
 
 ## Run it
 
@@ -103,7 +103,7 @@ computed statistics directly (and the dashboard is fully offline regardless).
 ## Verify
 
 ```bash
-.venv/bin/python -m pytest          # 30 tests, no API key needed (fully offline)
+.venv/bin/python -m pytest          # 37 tests, no API key needed (fully offline)
 .venv/bin/python evaluation.py      # deterministic gates only (offline)
 USE_LLM=1 .venv/bin/python evaluation.py   # + QAEvalChain correctness
 ```

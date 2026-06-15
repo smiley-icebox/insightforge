@@ -37,3 +37,12 @@ def test_off_topic_question_refuses_rather_than_guessing():
     out = rag.answer("zzqx wxyz nonsense qqqq")
     assert out["answer"] == config.NO_GROUNDING_MESSAGE
     assert out["grounded"] is False
+
+
+def test_strategic_question_answers_from_insights_not_refusal():
+    # The flagship open chip matches no single stat block; it must answer from the
+    # deterministic key insights (+ cited sources), NOT hit the refusal.
+    out = rag.answer("What does the data suggest we should focus on?")
+    assert out["answer"] != config.NO_GROUNDING_MESSAGE
+    assert "insights" in out["stats_used"]
+    assert "Widget A" in out["answer"]          # grounded on the real insight figures

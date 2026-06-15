@@ -42,4 +42,10 @@ each one:
   summarization (documented in the README).
 - **The numeric gate is a high-recall heuristic.** It catches fabricated or LLM-computed
   figures by value-matching with a small rounding tolerance; it is not a formal proof of
-  correctness (the underlying figures are correct by construction from pandas).
+  correctness (the underlying figures are correct by construction from pandas). It checks a
+  figure's *provenance*, not its binding to the right label — correct attribution is the
+  LLM's job, constrained by the exact-quote prompt.
+- **Numeric grounding is numeric-only; the qualitative source corpus is trusted.** The gate
+  doesn't filter prose, and the BI source PDFs are trusted operator input (no upload path —
+  `SOURCES_DIR` is fixed). An adversarial PDF could inject a qualitative instruction; out of
+  scope for a curated single-operator demo.

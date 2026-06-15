@@ -27,6 +27,10 @@ def build_eval_set() -> list[dict]:
     stats = analytics.statistical_measures()
     seg = analytics.customer_segmentation()
     top_age = seg["by_age"].sort_values("n", ascending=False).iloc[0]
+    # Peak among FULL months (mirrors the time block's partial-period guard).
+    months = analytics.sales_by_period(freq="month")
+    full = months[months["n"] >= 0.5 * months["n"].median()]
+    peak = full.loc[full["total_sales"].idxmax()]
     return [
         {"id": "total", "question": "What were the total sales across all records?",
          "reference": f"Total sales is {ov['total_sales']}.", "expected_stat": "overview"},
@@ -45,6 +49,10 @@ def build_eval_set() -> list[dict]:
         {"id": "age_band", "question": "Which customer age band has the most customers?",
          "reference": f"The {top_age['AgeBand']} age band, with {int(top_age['n'])} customers.",
          "expected_stat": "demographics"},
+        {"id": "trend", "question": "What was the peak sales month?",
+         "reference": f"The peak full month was {peak['YearMonth']} with "
+                      f"{int(peak['total_sales'])} in sales.",
+         "expected_stat": "time"},
     ]
 
 
@@ -72,8 +80,16 @@ def _deterministic(results: list[dict], k: int = 2) -> dict:
 
 
 def _parse_qa_grade(raw: str) -> bool:
+    import re
     t = (raw or "").strip().lower()
-    return "incorrect" not in t and "correct" in t
+    # QAEvalChain emits "GRADE: CORRECT/INCORRECT" — prefer that line. Fall back to a
+    # negative-aware check so "not correct" / "incorrect" aren't mis-read as CORRECT.
+    m = re.search(r"grade:\s*(correct|incorrect)", t)
+    if m:
+        return m.group(1) == "correct"
+    if "incorrect" in t or "not correct" in t:
+        return False
+    return "correct" in t
 
 
 def _grade_qa(results: list[dict]) -> dict:

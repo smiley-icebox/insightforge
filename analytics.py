@@ -123,10 +123,19 @@ def stat_blocks(df: pd.DataFrame | None = None) -> list[dict]:
     ov = overview(df)
     months = sales_by_period(df, "month")
     years = sales_by_period(df, "year")
-    peak = months.loc[months["total_sales"].idxmax()]
-    trough = months.loc[months["total_sales"].idxmin()]
-    first, last = months.iloc[0], months.iloc[-1]   # months is chronological
+    # Guard against partial boundary buckets: a half-recorded final month/year would make
+    # peak/trough/growth a truncation artifact (e.g. a fake -82% "collapse"), the exact
+    # mistake the grounding thesis exists to prevent. Use only "full" months (record count
+    # >= half the median) for trend endpoints, and flag any partial year in the table.
+    med_n = months["n"].median()
+    full = months[months["n"] >= 0.5 * med_n]
+    peak = full.loc[full["total_sales"].idxmax()]
+    trough = full.loc[full["total_sales"].idxmin()]
+    first, last = full.iloc[0], full.iloc[-1]   # first/last FULL month, chronological
     growth = _round((last["total_sales"] - first["total_sales"]) / first["total_sales"] * 100)
+    partial_years = years[years["n"] < 360]["Year"].tolist()
+    partial_note = (f" (note: {', '.join(str(y) for y in partial_years)} cover partial "
+                    f"years — fewer recorded days)") if partial_years else ""
     seg = customer_segmentation(df)
     stats = statistical_measures(df)
     prod, region = sales_by_product(df), sales_by_region(df)
@@ -145,12 +154,12 @@ def stat_blocks(df: pd.DataFrame | None = None) -> list[dict]:
          # Concise on purpose: yearly totals + peak/trough + a PRECOMPUTED growth figure,
          # so a phrased trend summary stays grounded (and the fallback stays readable). The
          # full monthly series drives the chart, not this text.
-         "text": (f"Yearly total sales:\n{_tbl(years)}\n"
-                  f"Peak month: {peak['YearMonth']} ({int(peak['total_sales'])}); "
+         "text": (f"Yearly total sales:\n{_tbl(years)}{partial_note}\n"
+                  f"Among full months — peak: {peak['YearMonth']} ({int(peak['total_sales'])}); "
                   f"lowest: {trough['YearMonth']} ({int(trough['total_sales'])}). "
-                  f"First month {first['YearMonth']}: {int(first['total_sales'])}; "
-                  f"latest {last['YearMonth']}: {int(last['total_sales'])} "
-                  f"({growth}% change first-to-latest).")},
+                  f"First full month {first['YearMonth']}: {int(first['total_sales'])}; "
+                  f"last full month {last['YearMonth']}: {int(last['total_sales'])} "
+                  f"({growth}% change, first-to-last full month).")},
         {"id": "product", "title": "Sales by product",
          "tags": "product widget which product best worst top selling performance compare products",
          "text": (f"Sales by product (sorted by total):\n{_tbl(prod)}\n"

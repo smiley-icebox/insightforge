@@ -33,6 +33,30 @@ def test_multi_dot_doi_or_section_number_does_not_pool_a_spurious_figure():
     assert is_numerically_grounded("Projected sales reached 24,010 units.", allowed)[0] is False
 
 
+def test_tight_tolerance_rejects_fabricated_value_in_a_dense_cluster():
+    # Satisfaction means cluster ~2.99-3.07; a fabricated 3.2 must not ground against them,
+    # and an exact quote must still ground (the ±0.5 floor used to let any match any).
+    allowed = "Widget A 3.03; Widget B 2.99; Widget C 3.01; Widget D 3.07"
+    assert is_numerically_grounded("satisfaction is 3.2", allowed)[0] is False
+    assert is_numerically_grounded("Widget D satisfaction is 3.07", allowed)[0] is True
+
+
+def test_leading_dot_decimal_parses_as_fraction_not_whole():
+    assert numbers("about .5 of customers") == [0.5]      # not 5
+
+
+def test_leading_dash_date_does_not_mint_a_negative():
+    assert -3.0 not in numbers("the period 2020-03 to 2021-05")
+    assert is_numerically_grounded("a -3.2% change", "the change was -3.2%")[0]  # real negatives ground
+
+
+def test_gate_checks_provenance_not_label_binding_known_boundary():
+    # Documents the gate's boundary (see WRITEUP/SECURITY): a real figure under the WRONG
+    # label still passes — provenance is enforced, attribution is the LLM's job.
+    allowed = "Widget A 375235. Widget D 326854."
+    assert is_numerically_grounded("Widget D leads with 375235.", allowed)[0] is True
+
+
 def test_number_from_a_cited_source_counts_as_grounded():
     allowed = "Mean sale: 553.29.\n[BI approaches p.6] Gartner Group, 2007 ranked BI #1."
     assert is_numerically_grounded("Per Gartner (2007), BI was top-ranked.", allowed)[0]

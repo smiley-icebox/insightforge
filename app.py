@@ -29,6 +29,13 @@ STAT_CHART = {
 
 st.set_page_config(page_title="InsightForge — BI Assistant", page_icon="📊", layout="wide")
 
+
+@st.cache_resource
+def _chart(key):
+    """Build each chart once per process (the data is static), so Streamlit reruns —
+    which re-render every history turn and both tabs — don't rebuild figures each time."""
+    return STAT_CHART[key]()
+
 EXAMPLES = [
     "Which product sells best, and how does it compare to the others?",
     "Which region has the highest sales?",
@@ -71,7 +78,7 @@ def sidebar():
         if rep:
             d = rep["deterministic"]
             st.metric(f"Retrieval hit-rate@{d['k']}", d["retrieval_hit_rate_at_k"])
-            st.metric("Numeric grounding", d["numeric_grounding_rate"])
+            st.metric("Numeric grounding (by construction)", d["numeric_grounding_rate"])
             if rep.get("qa_correctness"):
                 st.metric("QAEvalChain correctness", rep["qa_correctness"].get("correct_rate"))
 
@@ -81,12 +88,13 @@ def _render_turn(turn):
         st.markdown(turn["q"])
     with st.chat_message("assistant"):
         st.markdown(turn["answer"])
-        # Show the chart that matches what was retrieved — the answer and the picture
-        # together, the way an analyst would present it.
-        for sid in turn.get("stats_used", []):
-            if sid in STAT_CHART:
-                st.pyplot(STAT_CHART[sid]())
-                break
+        # Show the chart for the PRIMARY retrieved stat only — the question's main intent.
+        # Charting a secondary hit (e.g. a trend chart under a median/std answer) would
+        # contradict the question, so we never fall through to later ids.
+        used = turn.get("stats_used") or []
+        primary = used[0] if used else None
+        if primary in STAT_CHART:
+            st.pyplot(_chart(primary))
         cites = turn.get("citations") or []
         if cites:
             st.caption("Sources: " + " · ".join(f"{c['source']} (p.{c['page']})" for c in cites))
@@ -116,9 +124,15 @@ def tab_ask():
     typed = st.chat_input("Ask about sales, products, regions, customers…")
     q = typed or pending
     if q:
-        with st.spinner("Analyzing…"):
-            out = rag.answer(q, memory=mem)
-        st.session_state.history.append({"q": q, **out})
+        try:
+            with st.spinner("Analyzing…"):
+                out = rag.answer(q, memory=mem)
+            st.session_state.history.append({"q": q, **out})
+        except Exception as exc:
+            # Degrade gracefully instead of a raw traceback (e.g. a transient retrieval
+            # error). History is preserved in session_state.
+            st.error(f"Sorry — something went wrong handling that ({type(exc).__name__}). "
+                     "Please try again.")
         st.rerun()
 
 
@@ -132,11 +146,11 @@ def tab_dashboard():
     c4.metric("Mean age", ov["mean_age"])
     left, right = st.columns(2)
     with left:
-        st.pyplot(viz.sales_trend())
-        st.pyplot(viz.regional_analysis())
+        st.pyplot(_chart("time"))
+        st.pyplot(_chart("region"))
     with right:
-        st.pyplot(viz.product_performance())
-        st.pyplot(viz.customer_demographics())
+        st.pyplot(_chart("product"))
+        st.pyplot(_chart("demographics"))
 
 
 def main():
