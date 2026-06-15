@@ -68,7 +68,7 @@ answer ship, grounded.
 
 - All required capabilities work end-to-end. On the versioned eval set: **retrieval
   hit-rate@k 1.0, numeric grounding 1.0**, and LangChain **QAEvalChain correctness 1.0**.
-- **28 automated tests pass with no API call** — analytics figures, the grounding gate,
+- **30 automated tests pass with no API call** — analytics figures, the grounding gate,
   both retrievers, the RAG path (incl. a stubbed-LLM test proving fabricated numbers fall
   back), memory, eval, and the charts are all verifiable offline.
 - The assistant answers comparative questions with exact, grounded figures (shares, gaps,

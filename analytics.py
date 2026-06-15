@@ -122,8 +122,11 @@ def stat_blocks(df: pd.DataFrame | None = None) -> list[dict]:
     df = _df() if df is None else df
     ov = overview(df)
     months = sales_by_period(df, "month")
+    years = sales_by_period(df, "year")
     peak = months.loc[months["total_sales"].idxmax()]
     trough = months.loc[months["total_sales"].idxmin()]
+    first, last = months.iloc[0], months.iloc[-1]   # months is chronological
+    growth = _round((last["total_sales"] - first["total_sales"]) / first["total_sales"] * 100)
     seg = customer_segmentation(df)
     stats = statistical_measures(df)
     prod, region = sales_by_product(df), sales_by_region(df)
@@ -137,11 +140,17 @@ def stat_blocks(df: pd.DataFrame | None = None) -> list[dict]:
                   f"min: {ov['min_sales']}, max: {ov['max_sales']}. "
                   f"Mean customer satisfaction: {ov['mean_satisfaction']} (1-5). "
                   f"Mean customer age: {ov['mean_age']}.")},
-        {"id": "time", "title": "Sales by time period (monthly trend)",
-         "tags": "time period month monthly trend over time growth seasonal peak best worst month when",
-         "text": (f"Monthly total sales:\n{_tbl(months)}\n"
-                  f"Peak month: {peak['YearMonth']} ({int(peak['total_sales'])}). "
-                  f"Lowest month: {trough['YearMonth']} ({int(trough['total_sales'])}).")},
+        {"id": "time", "title": "Sales by time period (trend)",
+         "tags": "time period month monthly yearly trend over time growth seasonal peak best worst month year when",
+         # Concise on purpose: yearly totals + peak/trough + a PRECOMPUTED growth figure,
+         # so a phrased trend summary stays grounded (and the fallback stays readable). The
+         # full monthly series drives the chart, not this text.
+         "text": (f"Yearly total sales:\n{_tbl(years)}\n"
+                  f"Peak month: {peak['YearMonth']} ({int(peak['total_sales'])}); "
+                  f"lowest: {trough['YearMonth']} ({int(trough['total_sales'])}). "
+                  f"First month {first['YearMonth']}: {int(first['total_sales'])}; "
+                  f"latest {last['YearMonth']}: {int(last['total_sales'])} "
+                  f"({growth}% change first-to-latest).")},
         {"id": "product", "title": "Sales by product",
          "tags": "product widget which product best worst top selling performance compare products",
          "text": (f"Sales by product (sorted by total):\n{_tbl(prod)}\n"

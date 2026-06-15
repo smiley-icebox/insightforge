@@ -13,8 +13,9 @@ Built for the Applied GenAI capstone, then extended toward a system you'd actual
 > capstone's third-party papers aren't redistributed here; see `data/sources/README.md`).
 > The quantitative assistant works fully without them.
 
-![InsightForge: a grounded answer with the exact figures + an inline "how I answered this"
-panel, alongside the dashboard.](docs/demo.png)
+![InsightForge: a grounded answer with exact figures and a cited recommendation, the
+matching chart rendered inline, and a "how I answered this" provenance panel — the app
+also opens with auto-surfaced key insights.](docs/demo.png)
 
 ## The one idea worth taking away
 
@@ -66,9 +67,10 @@ computed statistics rendered directly, grounded by construction.
 | `grounding.py` | numeric-grounding gate (no fabricated figures) |
 | `rag.py` | dual retrieval → chained prompt → grounded synthesis → citations |
 | `memory.py` | conversation memory across turns |
+| `insights.py` | deterministic, grounded "key insights" for the landing screen |
 | `viz.py` | the four required charts (trend, product, region, demographics) |
 | `evaluation.py` | QAEvalChain + deterministic gates over a versioned, computed-reference set |
-| `app.py` | Streamlit: chat (with provenance) + dashboard |
+| `app.py` | Streamlit: chat with **answer-linked charts** + provenance, landing insights, dashboard |
 
 ## Rubric coverage — every item, several exceeded
 
@@ -83,7 +85,7 @@ computed statistics rendered directly, grounded by construction.
 | QAEvalChain evaluation | `evaluation.py` |
 | Visualizations (4 required) | `viz.py` |
 | Streamlit UI | `app.py` |
-| **Exceeds** | numeric-grounding gate · second cited RAG over BI literature · versioned computed-reference eval set · lint+CI · 28 offline tests |
+| **Exceeds** | numeric-grounding gate · second cited RAG over BI literature · versioned computed-reference eval set · lint+CI · 30 offline tests |
 
 ## Run it
 
@@ -101,7 +103,7 @@ computed statistics directly (and the dashboard is fully offline regardless).
 ## Verify
 
 ```bash
-.venv/bin/python -m pytest          # 28 tests, no API key needed (fully offline)
+.venv/bin/python -m pytest          # 30 tests, no API key needed (fully offline)
 .venv/bin/python evaluation.py      # deterministic gates only (offline)
 USE_LLM=1 .venv/bin/python evaluation.py   # + QAEvalChain correctness
 ```

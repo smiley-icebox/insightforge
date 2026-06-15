@@ -14,9 +14,18 @@ import streamlit as st
 import analytics
 import config
 import evaluation
+import insights
 import rag
 import viz
 from memory import ConversationMemory
+
+# Which retrieved statistic maps to which chart — so an answer shows the matching picture
+# inline, not one tab away. (overview borrows the trend; stats is numbers-only.)
+STAT_CHART = {
+    "time": viz.sales_trend, "product": viz.product_performance,
+    "region": viz.regional_analysis, "demographics": viz.customer_demographics,
+    "overview": viz.sales_trend,
+}
 
 st.set_page_config(page_title="InsightForge — BI Assistant", page_icon="📊", layout="wide")
 
@@ -72,6 +81,12 @@ def _render_turn(turn):
         st.markdown(turn["q"])
     with st.chat_message("assistant"):
         st.markdown(turn["answer"])
+        # Show the chart that matches what was retrieved — the answer and the picture
+        # together, the way an analyst would present it.
+        for sid in turn.get("stats_used", []):
+            if sid in STAT_CHART:
+                st.pyplot(STAT_CHART[sid]())
+                break
         cites = turn.get("citations") or []
         if cites:
             st.caption("Sources: " + " · ".join(f"{c['source']} (p.{c['page']})" for c in cites))
@@ -84,6 +99,13 @@ def _render_turn(turn):
 def tab_ask():
     st.subheader("Ask InsightForge")
     mem = _memory()
+    # Open with value: deterministic key insights, so the first screen orients the user
+    # instead of showing an empty chat. Hidden once a conversation starts.
+    if not st.session_state.get("history"):
+        st.markdown("**Key insights from your data**")
+        for line in insights.key_insights():
+            st.markdown(f"- {line}")
+        st.caption("Or ask your own question:")
     cols = st.columns(3)
     pending = None
     for i, ex in enumerate(EXAMPLES):
